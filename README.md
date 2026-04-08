@@ -4,79 +4,131 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![University: Ain Shams](https://img.shields.io/badge/ASU-Faculty%20of%20Engineering-red)](https://eng.asu.edu.eg/)
 
-[cite_start]**TinyTelemetry** is a custom application-layer protocol designed for resource-constrained IoT devices[cite: 19, 268]. [cite_start]Developed over **UDP**, it prioritizes minimal overhead, deterministic timing, and robustness in lossy network environments[cite: 20, 444, 664].
+---
+
+## 🚀 Killer Description
+
+**TinyTelemetry** is a high-performance, lightweight telemetry protocol engineered for **real-world IoT constraints**.
+
+⚡ Built on **UDP**, it eliminates connection overhead and delivers **fast, predictable data transmission**  
+📉 Designed to **operate under packet loss and jitter** without retransmissions  
+🧠 Smart server-side logic reconstructs missing data using **interpolation instead of reliability overhead**
+
+> 💡 *This project demonstrates how intelligent protocol design can outperform traditional TCP-based telemetry in constrained environments.*
 
 ---
 
 ## 📖 Table of Contents
 * [Overview](#overview)
+* [Architecture Diagram](#architecture-diagram)
 * [Protocol Architecture](#protocol-architecture)
 * [Key Features](#key-features)
 * [Experimental Results](#experimental-results)
 * [Getting Started](#getting-started)
 * [Reproducing Analysis](#reproducing-analysis)
 * [Project Contributors](#project-contributors)
+* [Support & Feedback](#support--feedback)
 
 ---
 
 ## 🔍 Overview
-[cite_start]Traditional telemetry (TCP-based) introduces connection delays and retransmission jitter[cite: 446, 671]. [cite_start]**TinyTelemetry** trades strict reliability for simplicity and efficiency using a fixed 12-byte header and optional batching[cite: 447, 675].
 
-### Target Use Case
-* [cite_start]**Environment**: Periodic reporting of sensor readings (Temp, Humidity, Voltage)[cite: 19, 303].
-* [cite_start]**Constraints**: 5-15% network loss, 200-byte max packet size[cite: 450, 451].
+Traditional telemetry protocols rely on TCP, which introduces:
+- ❌ Connection setup delays  
+- ❌ Retransmission overhead  
+- ❌ Unpredictable latency (jitter)  
+
+**TinyTelemetry solves this by:**
+- Using **stateless UDP communication**
+- Minimizing packet size (12-byte header)
+- Offloading reliability to **intelligent server-side processing**
+
+---
+
+## 🖼️ Architecture Diagram
+
+<p align="center">
+  <img src="Assets/Protocol Flowchart.png" width="500"><br>
+  <b>Protocol Workflow</b>
+</p>
+
+<p align="center">
+  <img src="Assets/Architecture_FSM.png" width="500"><br>
+  <b>Client Finite State Machine</b>
+</p>
+
+### 🧩 System Architecture (Concept)
+
+```
++-------------+        UDP Packets        +-------------+
+|  IoT Client |  ---------------------->  |   Server    |
+| (Sensor)    |                           | (Collector) |
++-------------+                           +-------------+
+       |                                         |
+       |  DATA / HB / INIT packets               |
+       |                                         |
+       v                                         v
+  Local Buffer                          Data Processing Engine
+                                        - Loss Detection
+                                        - Interpolation
+                                        - Anomaly Detection
+                                        - Logging & Analysis
+```
 
 ---
 
 ## 🏗️ Protocol Architecture
-[cite_start]The protocol follows a **Stateless Unidirectional Client-Server Model**[cite: 277, 467, 674].
 
-### Finite State Machine (FSM)
-[cite_start]The client transitions through the following states[cite: 469, 779]:
-`START` ➡️ `INIT` (Seq 0) ➡️ `REPORTING` (DATA/HB) ➡️ `END`
+TinyTelemetry follows a **Stateless Unidirectional Client–Server Model**.
 
-<p align="center">
-  <img src="Assets/Protocol Flowchart.png" alt="Protocol Flowchart" width="600">
-  <img src="Assets/Architecture_FSM.png" alt="Client FSM" width="600">
-</p>
+### 🔄 Client FSM
 
-### Message Structure (12-Byte Header)
+```
+START → INIT → REPORTING (DATA / HB) → END
+```
+
+---
+
+### 📦 Message Structure (12-Byte Header)
+
 | Field | Size | Description |
-| :--- | :--- | :--- |
-| **Ver/MsgType** | 1 Byte | Upper 4 bits: Version; [cite_start]Lower 4 bits: Type (INIT/DATA/HB)[cite: 287, 471]. |
-| **DeviceID** | 2 Bytes | [cite_start]Unique sensor identifier[cite: 288, 474]. |
-| **SeqNum** | 4 Bytes | [cite_start]Incremented per packet for gap/duplicate detection[cite: 288, 475, 676]. |
-| **Timestamp** | 4 Bytes | [cite_start]UNIX epoch for synchronization and reordering[cite: 288, 476, 589]. |
-| **Flags** | 1 Byte | [cite_start]Bitwise flags: Batching (Bit 0), Checksum (Bit 2)[cite: 287, 477]. |
+|------|------|------------|
+| **Ver/MsgType** | 1 Byte | Version + Message Type |
+| **DeviceID** | 2 Bytes | Unique sensor ID |
+| **SeqNum** | 4 Bytes | Sequence tracking |
+| **Timestamp** | 4 Bytes | Synchronization |
+| **Flags** | 1 Byte | Batching & checksum |
 
 ---
 
 ## ✨ Key Features
-* [cite_start]**Optional Batching**: Group up to 31 readings into one packet to amortize header overhead[cite: 273, 499, 677].
-* [cite_start]**Loss Estimation**: Server-side **Linear Interpolation** to approximate missing data without retransmission[cite: 502, 643].
-* [cite_start]**Anomaly Detection**: Real-time detection of duplicates, sequence gaps, and reordered packets[cite: 43, 321, 681].
-* [cite_start]**Integrity**: Optional 1-byte modulo checksum for per-reading validation[cite: 290, 366, 498].
+
+- 📦 **Batching (Up to 31 readings)** → Reduces overhead  
+- 📉 **Loss Handling via Interpolation** → No retransmission needed  
+- 🚨 **Anomaly Detection** → Detect duplicates & gaps  
+- 🔐 **Optional Checksum** → Lightweight data integrity  
 
 ---
 
 ## 📊 Experimental Results
-[cite_start]Evaluated using Linux `netem` to simulate real-world impairments[cite: 50, 149, 685].
 
-### 1. Header Amortization (Batching)
-[cite_start]As the reporting interval increases, more readings are batched, significantly reducing the **average bytes per report**[cite: 539, 541, 689].
+Simulated using Linux `netem`.
 
+### 📈 Batching Efficiency
 <p align="center">
-  <img src="Experiments/plots/bytes_per_report_vs_reporting_interval.png" alt="Batching Efficiency" width="500">
+  <img src="Experiments/plots/bytes_per_report_vs_reporting_interval.png" width="500">
 </p>
 
-### 2. Network Resilience
-[cite_start]Testing with **5% Packet Loss** and **100ms Jitter**[cite: 53, 627, 628]:
-* [cite_start]**Baseline (0% Loss)**: High reliability with sequence tracking[cite: 53, 552].
-* [cite_start]**Impaired**: Server successfully detects gaps and applies interpolation[cite: 53, 365, 681].
+### 🌐 Network Resilience
+- 5% Packet Loss  
+- 100ms Jitter  
+
+✔ Successful loss detection  
+✔ Smooth data reconstruction  
 
 <p align="center">
-  <img src="Assets/loss5_server_output.png" alt="5 Percent Loss Output" width="450">
-  <img src="Assets/delay_jitter_server_output.png" alt="Jitter Output" width="450">
+  <img src="Assets/loss5_server_output.png" width="450">
+  <img src="Assets/delay_jitter_server_output.png" width="450">
 </p>
 
 ---
@@ -84,10 +136,93 @@
 ## 🚀 Getting Started
 
 ### Prerequisites
-* [cite_start]Python 3.8+ [cite: 383, 625]
-* [cite_start]Linux (for `netem` testing) [cite: 147, 625]
+- Python 3.8+
+- Linux (recommended for `netem`)
 
-### Usage
-1. **Start Server**:
+---
+
+### ⚙️ Usage
+
+1. **Start Server**
    ```bash
    python src/server.py
+   ```
+
+2. **Start Client**
+   ```bash
+   python src/client.py --ip 127.0.0.1 --device 99 --interval 1.0
+   ```
+
+3. **Run Tests**
+   ```bash
+   python src/udp_tester_all.py
+   ```
+
+---
+
+## 🧪 Reproducing Analysis
+
+```bash
+python src/analyze_results.py
+```
+
+Uses:
+- Pandas
+- Matplotlib
+
+---
+
+## 👥 Project Contributors
+
+This project was developed by **Team 34**  
+*Faculty of Engineering – Ain Shams University*
+
+| Name | ID | Role |
+|------|----|------|
+| Abdelrahman Adel 🧑🏻‍💻 | 23P0144 | Protocol Design & Team Lead |
+| Monzer Mahmoud 🧑🏻‍💻 | 23P0122 | Network Emulation & Testing |
+| Omar Ahmed Abouraia 🧑🏻‍💻 | 23P0100 | Data Analysis & Plotting |
+| Hossam Osama 🧑🏻‍💻 | 23P0010 | Server-side Logic & Interpolation |
+| Zeina Reda 👩🏻‍💻 | 23P0181 | Documentation & Mini-RFC |
+| Logine Mohamed 👩🏻‍💻 | 23P0187 | Quality Assurance & Validation |
+
+
+---
+
+### 🎓 Supervision
+- Prof. Ayman Bahaa  
+- Dr. Kareem Emara  
+
+---
+
+## 🌟 Support & Feedback
+
+⭐ **Give it a Star** to support the project!
+💡 **Have suggestions or found a bug?**  
+- 🐛 Open an issue for bugs
+- Or reach out directly using the links below
+ 
+
+## 📬 Contact
+
+<p align="center">
+
+<a href="mailto:omara862005@gmail.com?subject=TinyTelemetry%20Feedback&body=Hi%20Eng.%20Omar%20Abouraia,%0A%0AI%20would%20like%20to%20share%20some%20feedback...">
+  <img src="https://img.shields.io/badge/Email-Contact%20Me-red?style=for-the-badge&logo=gmail&logoColor=white"/>
+</a>
+
+<a href="https://www.linkedin.com/in/omarabouraia/">
+  <img src="https://img.shields.io/badge/LinkedIn-Omar%20Abouraia-blue?style=for-the-badge&logo=linkedin&logoColor=white"/>
+</a>
+
+<a href="https://github.com/OmarAbouraia">
+  <img src="https://img.shields.io/badge/GitHub-Profile-black?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+
+</p>
+
+---
+
+## 📜 License
+
+MIT License
