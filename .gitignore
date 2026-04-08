@@ -1,0 +1,13 @@
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+
+# Ignore all CSV logs generated during testing
+Experiments/logs/*.csv
+
+# But DO NOT ignore the specific batching results
+!experiments/logs/results_batched/*.csv
+
+# Ignore OS specific files
+.DS_Store
+Thumbs.db
